@@ -1,0 +1,1592 @@
+openapi: 3.1.0
+info:
+  title: CTU eLibrary API
+  version: 1.0.0
+  description: API quản lý thư viện điện tử của Đại học Cần Thơ
+  x-fiddle-import-file: true
+servers:
+  - url: /api
+    description: API Server
+paths:
+  /books:
+    get:
+      operationId: getBooks
+      tags:
+        - Books
+      summary: Get books
+      description: Lấy danh sách tất cả sách trong thư viện
+      parameters:
+        - name: publisher
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          explode: false
+          description: Các nhà xuất bản
+        - name: genre
+          in: query
+          schema:
+            type: array
+            items:
+              type: string
+          explode: false
+          description: Các thể loại sách
+        - name: publicationYear
+          in: query
+          schema:
+            type: array
+            items:
+              type: number
+          explode: false
+          description: Các năm xuất bản
+      responses:
+        "200":
+          description: Danh sách sách
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/Book"
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/SimpleBook"
+                title: GetAllBooksOk
+    post:
+      operationId: createBook
+      tags:
+        - Books
+      summary: Create book
+      description: Thêm sách mới vào thư viện (Chỉ nhân viên)
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookCreate"
+      responses:
+        "201":
+          description: Sách đã được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+  /books/{id}:
+    get:
+      operationId: getBookById
+      tags:
+        - Books
+      summary: Get book by ID
+      description: Lấy thông tin chi tiết của một cuốn sách theo ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Mã sách (ID)
+      responses:
+        "200":
+          description: Thông tin chi tiết sách
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "404":
+          description: Không tìm thấy sách
+          content:
+            text/plain:
+              schema:
+                type: string
+    put:
+      operationId: updateBook
+      tags:
+        - Books
+      summary: Update book
+      description: Cập nhật thông tin sách (Chỉ nhân viên)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Mã sách (ID)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BookCreate"
+      responses:
+        "200":
+          description: Sách đã được cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy sách
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteBook
+      tags:
+        - Books
+      summary: Delete book
+      description: Xóa sách khỏi thư viện (Chỉ nhân viên)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Mã sách (ID)
+      responses:
+        "204":
+          description: Sách đã được xóa
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /readers:
+    get:
+      operationId: getReaders
+      tags:
+        - Readers
+      summary: Get readers
+      description: Lấy danh sách tất cả độc giả (Chỉ nhân viên)
+      security:
+        - accessToken: []
+      responses:
+        "200":
+          description: Danh sách độc giả
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Reader"
+                title: GetAllReadersOk
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+    post:
+      operationId: registerReader
+      tags:
+        - Readers
+      summary: Register reader
+      description: Đăng ký tài khoản độc giả mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReaderCreate"
+      responses:
+        "201":
+          description: Độc giả đã được tạo thành công
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reader"
+        "400":
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+  /readers/profile:
+    get:
+      operationId: getReaderProfile
+      tags:
+        - Readers
+      summary: Get reader profile
+      description: Xem thông tin cá nhân của độc giả hiện tại
+      security:
+        - accessToken: []
+      responses:
+        "200":
+          description: Thông tin cá nhân độc giả
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reader"
+        "204":
+          $ref: "#/components/responses/NoContent"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+    post:
+      operationId: updateReaderProfile
+      tags:
+        - Readers
+      summary: Update reader profile
+      description: Cập nhật thông tin cá nhân của độc giả hiện tại
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReaderProfile"
+      responses:
+        "200":
+          description: Thông tin đã được cập nhật
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reader"
+        "400":
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+  /readers/holds/{bookCopyId}:
+    get:
+      operationId: getHoldRequestByBookCopyId
+      tags:
+        - Readers
+        - Hold Requests
+      summary: Kiểm tra yêu cầu giữ sách
+      description: Kiểm tra xem độc giả có yêu cầu giữ sách cho bản sao sách cụ thể không
+      security:
+        - accessToken: []
+      parameters:
+        - name: bookCopyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Mã bản sao sách
+      responses:
+        "200":
+          description: Trạng thái yêu cầu giữ sách
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HoldRequest"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy yêu cầu giữ sách
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: cancelReaderHoldRequest
+      tags:
+        - Readers
+      summary: Cancel reader hold request
+      description: Hủy yêu cầu giữ sách cho một bản sao sách
+      security:
+        - accessToken: []
+      parameters:
+        - name: bookCopyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Mã bản sao sách
+      responses:
+        "204":
+          description: Yêu cầu giữ sách đã được hủy
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Không tìm thấy yêu cầu giữ sách
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    post:
+      operationId: createReaderHoldRequest
+      tags:
+        - Readers
+      summary: Create reader hold request
+      description: Tạo yêu cầu giữ sách cho một bản sao sách
+      security:
+        - accessToken: []
+      parameters:
+        - name: bookCopyId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Mã bản sao sách
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        "201":
+          description: Yêu cầu giữ sách đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HoldRequest"
+        "400":
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /readers/{id}:
+    get:
+      operationId: getReaderById
+      tags:
+        - Readers
+      summary: Get reader by ID
+      description: Get a specific reader by ID (Staff only)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reader ID
+      responses:
+        "200":
+          description: Reader details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reader"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Reader not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: updateReaderById
+      tags:
+        - Readers
+      summary: Update reader
+      description: Update a reader (Staff only)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reader ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ReaderCreate"
+      responses:
+        "200":
+          description: Reader updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reader"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Reader not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteReaderById
+      tags:
+        - Readers
+      summary: Delete reader
+      description: Delete a reader (Staff only)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Reader ID
+      responses:
+        "204":
+          description: Reader deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Reader not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /publishers:
+    get:
+      operationId: getPublishers
+      tags:
+        - Publishers
+      summary: Get publishers
+      description: Lấy danh sách tất cả nhà xuất bản
+      responses:
+        "200":
+          description: Danh sách nhà xuất bản
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/Publisher"
+                  - type: array
+                    items:
+                      $ref: "#/components/schemas/SimplePublisher"
+                title: GetAllPublishersOk
+      parameters: []
+    post:
+      operationId: createPublisher
+      tags:
+        - Publishers
+      summary: Create publisher
+      description: Thêm nhà xuất bản mới (Chỉ nhân viên)
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublisherCreate"
+      responses:
+        "201":
+          description: Nhà xuất bản đã được tạo
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Publisher"
+        "400":
+          description: Yêu cầu không hợp lệ
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+  /publishers/{id}:
+    get:
+      operationId: getPublisherById
+      tags:
+        - Publishers
+      summary: Get publisher by ID
+      description: Get a specific publisher by its ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Publisher ID
+      responses:
+        "200":
+          description: Publisher details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Publisher"
+        "404":
+          description: Publisher not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: updatePublisher
+      tags:
+        - Publishers
+      summary: Update publisher
+      description: Update a publisher (Staff only)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Publisher ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PublisherCreate"
+      responses:
+        "200":
+          description: Publisher updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Publisher"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Publisher not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deletePublisher
+      tags:
+        - Publishers
+      summary: Delete publisher
+      description: Delete a publisher (Staff only)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Publisher ID
+      responses:
+        "204":
+          description: Publisher deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /staff:
+    post:
+      operationId: createStaff
+      tags:
+        - Staff
+      summary: Create staff
+      description: Create a new staff member (Admin only)
+      security:
+        - accessToken: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffCreate"
+      responses:
+        "201":
+          description: Staff member created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+    get:
+      operationId: getStaffs
+      tags:
+        - Staff
+      summary: Get staffs
+      description: Get a list of all staff members (Admin only)
+      security:
+        - accessToken: []
+      responses:
+        "200":
+          description: List of staff
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Staff"
+                title: GetAllStaffOk
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+  /staff/{id}:
+    get:
+      operationId: getStaffById
+      tags:
+        - Staff
+      summary: Get staff by ID
+      description: Get a specific staff member by ID (Admin only)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Staff ID
+      responses:
+        "200":
+          description: Staff details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Staff not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    put:
+      operationId: updateStaff
+      tags:
+        - Staff
+      summary: Update staff
+      description: Update a staff member (Admin only)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Staff ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffCreate"
+      responses:
+        "200":
+          description: Staff updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "404":
+          description: Staff not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+    delete:
+      operationId: deleteStaff
+      tags:
+        - Staff
+      summary: Delete staff
+      description: Delete a staff member (Admin only)
+      security:
+        - accessToken: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Staff ID
+      responses:
+        "204":
+          description: Staff deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Forbidden - Admin only
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+  /borrow:
+    post:
+      operationId: borrowBook
+      tags:
+        - borrow
+      summary: Borrow book
+      responses:
+        "201":
+          description: The request was successful, and a new resource was created.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Borrow"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Authentication is required to access the requested resource. The
+            client must include the appropriate credentials.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+      requestBody:
+        required: true
+        description: ""
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                readerId:
+                  type: string
+                bookId:
+                  type: string
+                dueDate:
+                  type: string
+                notes:
+                  type: string
+              required:
+                - readerId
+                - bookId
+      security:
+        - accessToken: []
+      parameters: []
+    delete:
+      operationId: returnBook
+      tags:
+        - borrow
+      summary: Return book
+      responses:
+        "204":
+          description: The request was successful, but there is NoContent to return in the
+            response.
+          content:
+            application/json:
+              schema:
+                type: "null"
+                title: TrảSachNoContent
+        "401":
+          description: Authentication is required to access the requested resource. The
+            client must include the appropriate credentials.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                title: TrảSachUnauthorized
+      parameters:
+        - in: query
+          name: borrowId
+          required: false
+          style: form
+          description: Các nhà xuất bản
+          explode: false
+          schema:
+            type: string
+          allowReserved: false
+  /books/genres:
+    get:
+      operationId: getAllGenres
+      tags:
+        - Books
+      summary: Get all genres
+      responses:
+        "200":
+          description: The request was successful, and the server has returned the
+            requested resource in the response body.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                title: GetAllGenresOk
+      parameters: []
+  /auth/staff:
+    post:
+      operationId: loginAsStaff
+      tags:
+        - Authentication
+      summary: Login as staff
+      description: Xác thực đăng nhập cho nhân viên thư viện
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Authentication is required to access the requested resource. The
+            client must include the appropriate credentials.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+        "404":
+          $ref: "#/components/responses/NotFound"
+      parameters: []
+  /auth/reader:
+    post:
+      operationId: loginAsReader
+      tags:
+        - Authentication
+      summary: Login as reader
+      description: Xác thực đăng nhập cho độc giả
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          description: Authentication is required to access the requested resource. The
+            client must include the appropriate credentials.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+        "404":
+          $ref: "#/components/responses/NotFound"
+      parameters: []
+  /auth/logout:
+    post:
+      operationId: logout
+      tags:
+        - Authentication
+      summary: Logout
+      description: Đăng xuất khỏi hệ thống
+      security:
+        - accessToken: []
+      responses:
+        "204":
+          $ref: "#/components/responses/NoContent"
+      parameters: []
+  /books/search:
+    get:
+      operationId: searchBooks
+      tags:
+        - Books
+      summary: Search books
+      description: Tìm kiếm sách theo tên, tác giả, ISBN, v.v.
+      parameters:
+        - name: query
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Từ khóa tìm kiếm
+      responses:
+        "200":
+          description: Kết quả tìm kiếm
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BookSearchResult"
+                title: SearchBooksOk
+  /staff/profile:
+    get:
+      operationId: getStaffProfile
+      tags:
+        - Staff
+      summary: Get staff profile
+      responses:
+        "200":
+          description: The request was successful, and the server has returned the
+            requested resource in the response body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Staff"
+        "204":
+          $ref: "#/components/responses/NoContent"
+        "401":
+          description: Authentication is required to access the requested resource. The
+            client must include the appropriate credentials.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+        "403":
+          description: The server understood the request, but refuses to authorize it.
+            Ensure the client has appropriate permissions.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+      security:
+        - accessToken: []
+  /readers/holds:
+    get:
+      operationId: getHolds
+      tags:
+        - Readers
+      summary: Get reader hold requests
+      description: Xem danh sách yêu cầu giữ sách của độc giả hiện tại
+      security:
+        - accessToken: []
+      responses:
+        "200":
+          description: Danh sách yêu cầu giữ sách
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HoldRequest"
+                title: GetReaderHoldsOk
+        "401":
+          description: Không có quyền truy cập
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+      parameters: []
+components:
+  securitySchemes:
+    accessToken:
+      type: apiKey
+      name: accessToken
+      in: cookie
+      description: ""
+  schemas:
+    Book:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        ISBN:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        copiesCount:
+          type: number
+          minimum: 1
+        author:
+          type: string
+        pageCount:
+          type: number
+        genre:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+        publicationYear:
+          type: number
+        publisher:
+          type: string
+        status:
+          type: string
+          enum:
+            - available
+            - borrowing
+            - holding
+            - unavailable
+      required:
+        - ISBN
+        - author
+        - pageCount
+        - id
+        - genre
+        - publicationYear
+        - publisher
+        - title
+      description: ""
+    SimpleBook:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+          enum:
+            - available
+            - borrowing
+            - holding
+            - unavailable
+        publicationYear:
+          type: number
+      required:
+        - id
+        - status
+        - title
+        - publicationYear
+      description: ""
+    BookCreate:
+      type: object
+      properties:
+        title:
+          type: string
+        ISBN:
+          type: string
+        price:
+          type: number
+          minimum: 0
+        copiesCount:
+          type: number
+          minimum: 1
+        publishingYear:
+          type: number
+        publisher:
+          type: string
+        author:
+          type: string
+        pageCount:
+          type: number
+        genre:
+          type: array
+          items:
+            type: string
+        summary:
+          type: string
+      required:
+        - title
+        - ISBN
+        - price
+        - copiesCount
+        - publishingYear
+        - publisher
+        - author
+        - pageCount
+    Reader:
+      type: object
+      properties:
+        id:
+          type: string
+        code:
+          type: string
+          pattern: ^\d{7}$
+        lastName:
+          type: string
+        firstName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+            - M
+            - F
+            - Other
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+      required:
+        - code
+        - lastName
+        - firstName
+        - gender
+        - phone
+        - email
+        - id
+      description: ""
+    ReaderCreate:
+      type: object
+      properties:
+        code:
+          type: string
+          pattern: ^\d{7}$
+        lastName:
+          type: string
+        firstName:
+          type: string
+        dateOfBirth:
+          type: string
+          format: date
+        gender:
+          type: string
+          enum:
+            - M
+            - F
+            - Other
+        address:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required:
+        - code
+        - lastName
+        - firstName
+        - gender
+        - phone
+        - email
+        - password
+    Staff:
+      type: object
+      properties:
+        id:
+          type: string
+        username:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - staff
+        address:
+          type: string
+        phone:
+          type: string
+      required:
+        - username
+        - name
+        - role
+        - id
+      description: ""
+    StaffCreate:
+      type: object
+      properties:
+        username:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - staff
+        address:
+          type: string
+        phone:
+          type: string
+        password:
+          type: string
+          minLength: 6
+      required:
+        - username
+        - name
+        - password
+    Publisher:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+          pattern: ^\d{10,11}$
+        email:
+          type: string
+          format: email
+        website:
+          type: string
+        titleCount:
+          type: number
+      required:
+        - name
+        - address
+        - phone
+        - id
+        - titleCount
+      description: ""
+    PublisherCreate:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+          pattern: ^\d{10,11}$
+        email:
+          type: string
+          format: email
+        website:
+          type: string
+      required:
+        - name
+        - address
+        - phone
+    HoldRequest:
+      type: object
+      properties:
+        id:
+          type: string
+        reader:
+          type: string
+        book:
+          type: string
+        holdDate:
+          type: string
+          format: date-time
+        expiryDate:
+          type: string
+          format: date-time
+      required:
+        - reader
+        - book
+        - holdDate
+        - expiryDate
+        - id
+      description: ""
+    Borrow:
+      type: object
+      properties:
+        id:
+          type: string
+        reader:
+          type: string
+        book:
+          type: string
+        borrowDate:
+          type: string
+          format: date-time
+        dueDate:
+          type: string
+          format: date-time
+        returnDate:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+      required:
+        - reader
+        - book
+        - borrowDate
+        - dueDate
+        - id
+      description: ""
+    LoginRequest:
+      type: object
+      properties:
+        identifier:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+        - identifier
+      description: ""
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        error:
+          type: string
+    BookSearchResult:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        author:
+          type: string
+      required:
+        - id
+        - title
+        - author
+      description: ""
+    SimplePublisher:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+      required:
+        - id
+        - name
+      description: ""
+    ReaderProfile:
+      type: object
+      description: ""
+      properties:
+        firstName:
+          type: string
+        lastName:
+          type: string
+        phone:
+          type: string
+        dateOfBirth:
+          type: string
+        gender:
+          type: string
+          enum:
+            - M
+            - F
+            - Other
+        address:
+          type: string
+      required:
+        - firstName
+        - lastName
+        - phone
+  responses:
+    BadRequest:
+      description: The server could not understand the request due to invalid syntax.
+        The client should modify the request and try again.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              errors:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                  required:
+                    - message
+            required:
+              - message
+    NotFound:
+      description: The server cannot find the requested resource. The endpoint may be
+        invalid or the resource may no longer exist.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+            required:
+              - message
+    NoContent:
+      description: The request was successful, but there is NoContent to return in the
+        response.
+      content:
+        application/json:
+          schema:
+            type: "null"
+tags:
+  - name: Authentication
+    description: Các thao tác xác thực và đăng nhập
+  - name: Books
+    description: Quản lý sách và thông tin sách
+  - name: Readers
+    description: Quản lý độc giả và thông tin cá nhân
+  - name: Publishers
+    description: Quản lý nhà xuất bản
+  - name: Staff
+    description: Quản lý nhân viên thư viện
+  - name: Hold Requests
+    description: Quản lý yêu cầu giữ sách
+  - name: borrow

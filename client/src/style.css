@@ -1,0 +1,30 @@
+@import url('https://fonts.googleapis.com/css2?family=K2D:wght@800&family=Readex+Pro&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@nuxt/ui";
+
+@theme {
+  --container-8xl: 90rem;
+}
+
+:root {
+  --ui-container: var(--container-8xl);
+}
+
+body {
+  @apply antialiased text-default bg-default;
+}
+
+* {
+  @apply scrollbar-thin;
+}
+
+body {
+  font-family: "Readex Pro", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings: "HEXP" 0;
+}
+
+@plugin "tailwind-scrollbar";

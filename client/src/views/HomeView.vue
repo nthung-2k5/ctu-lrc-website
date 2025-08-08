@@ -73,9 +73,6 @@ const isAuthenticated = computed(() => !authStore.isGuest);
                         </div>
                     </template>
 
-                    <p class="text-gray-600">Sinh viên và giảng viên có thể mượn tới 5 cuốn sách trong thời gian
-                        14 ngày và gia hạn trực tuyến.</p>
-
                     <template #footer>
                         <UButton variant="outline" @click="$router.push('/books')" color="primary">
                             Tìm kiếm sách

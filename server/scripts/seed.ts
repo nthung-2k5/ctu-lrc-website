@@ -115,7 +115,7 @@ const seedData = async () => {
         //             maDocGia: readers[i % readers.length]._id,
         //             maSach: copy._id,
         //             ngayMuon: pastDate,
-        //             hanTra: new Date(pastDate.getTime() + 14 * 24 * 60 * 60 * 1000),
+        //             hanTra: new Date(pastDate.getTime() + 30 * 24 * 60 * 60 * 1000),
         //         });
 
         //         borrowRecords.push(borrow);
@@ -131,7 +131,7 @@ const seedData = async () => {
         //             maDocGia: readers[i % readers.length]._id,
         //             maSach: availableCopy._id,
         //             ngayMuon: pastDate,
-        //             hanTra: new Date(pastDate.getTime() + 14 * 24 * 60 * 60 * 1000),
+        //             hanTra: new Date(pastDate.getTime() + 30 * 24 * 60 * 60 * 1000),
         //             ngayTra: returnDate
         //         });
 

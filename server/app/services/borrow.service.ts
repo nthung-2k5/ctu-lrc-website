@@ -51,7 +51,7 @@ const borrowBook = async (staffId: Types.ObjectId, readerId: Types.ObjectId, boo
     const borrow = await Borrow.create({
         maDocGia: readerId,
         maSach: bookId,
-        hanTra: dueDate ?? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // Default to 14 days from now
+        hanTra: dueDate ?? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default to 30 days from now
         maNhanVien: staffId
     });
 

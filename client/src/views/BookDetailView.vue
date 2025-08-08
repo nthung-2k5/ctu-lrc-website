@@ -207,7 +207,7 @@ const holdBookButton = computed(() => {
                                 </p>
                                 <p>
                                     <span class="font-medium">Thời gian mượn:</span>
-                                    Bạn có thể mượn sách trong vòng 14 ngày.
+                                    Bạn có thể mượn sách trong vòng 30 ngày.
                                 </p>
                             </div>
                         </div>

@@ -1,127 +1,48 @@
 <script setup lang="ts">
-import { BorrowApi, BookApi, ReaderApi } from '@/api';
-import type { Borrow, Book, Reader } from '@/openapi';
+import { BorrowApi, PublisherApi } from '@/api';
+import { Publisher, type HoldRequest } from '@/openapi';
 import type { FormSubmitEvent } from '@nuxt/ui';
+import { addDays } from 'date-fns';
 import { ref, computed, useTemplateRef, onMounted } from 'vue';
 import z from 'zod';
 
 const form = useTemplateRef('form');
+const publishers = ref<Publisher[]>([]);
 
 const props = defineProps<{
-    borrow?: Borrow;
-    mode: 'view' | 'create' | 'edit';
+    holdRequest?: HoldRequest;
+    mode: 'view' | 'create';
 }>();
 
 const emit = defineEmits(['close']);
 
-const books = ref<Book[]>([]);
-const readers = ref<Reader[]>([]);
-
 onMounted(async () => {
-    // Load books and readers for dropdowns
-    try {
-        const [booksResponse, readersResponse] = await Promise.all([
-            BookApi.list(),
-            ReaderApi.list()
-        ]);
-        books.value = booksResponse.data;
-        readers.value = readersResponse.data;
-    } catch (error) {
-        console.error('Error loading data:', error);
-    }
-
-    state.value = {
-        readerId: undefined,
-        bookId: undefined,
-        borrowDate: undefined,
-        dueDate: undefined,
-        returnDate: undefined,
-        notes: undefined
-    };
-
-    if (props.borrow) {
-        state.value = {
-            readerId: typeof props.borrow.reader === 'string' ? props.borrow.reader : props.borrow.reader.id,
-            bookId: typeof props.borrow.book === 'string' ? props.borrow.book : props.borrow.book.id,
-            borrowDate: props.borrow.borrowDate?.split('T')[0], // Convert to date format
-            dueDate: props.borrow.dueDate?.split('T')[0], // Convert to date format
-            returnDate: props.borrow.returnDate?.split('T')[0] || undefined, // Convert to date format
-            notes: props.borrow.notes || undefined
-        };
+    publishers.value = (await PublisherApi.list()).data;
+    if (props.holdRequest) {
+        // Set default return date to 1 month from today
+        const defaultReturnDate = new Date();
+        defaultReturnDate.setDate(defaultReturnDate.getDate() + 30);
+        state.value.dueDate = defaultReturnDate.toISOString().split('T')[0];
     }
 });
 
 const schema = z.object({
-    readerId: z.string('Vui lòng chọn độc giả'),
-    bookId: z.string('Vui lòng chọn sách'),
-    borrowDate: z.string('Ngày mượn là bắt buộc'),
-    dueDate: z.string('Ngày trả dự kiến là bắt buộc'),
-    returnDate: z.string().optional(),
-    notes: z.string().optional()
+    dueDate: z.string('Ngày trả dự kiến là bắt buộc')
 });
 
 type Schema = z.output<typeof schema>;
 
 const state = ref<Partial<Schema>>({
-    readerId: undefined,
-    bookId: undefined,
-    borrowDate: undefined,
-    dueDate: undefined,
-    returnDate: undefined,
-    notes: undefined
+    dueDate: undefined
 });
 
 // Computed properties
 const title = computed(() => {
     switch (props.mode) {
         case 'view':
-            return `Thông tin giao dịch mượn`;
+            return `Thông tin yêu cầu giữ sách`;
         case 'create':
-            return 'Tạo giao dịch mượn mới';
-        case 'edit':
-            return `Chỉnh sửa giao dịch mượn`;
-    }
-});
-
-const bookOptions = computed(() =>
-    books.value.map(book => ({
-        label: `${book.title} - ${book.isbn}`,
-        value: book.id
-    }))
-);
-
-const readerOptions = computed(() =>
-    readers.value.map(reader => ({
-        label: `${reader.lastName} ${reader.firstName} (${reader.readerCode})`,
-        value: reader.id
-    }))
-);
-
-const statusBadgeColor = computed(() => {
-    if (!props.borrow) return 'gray';
-    switch (props.borrow.status) {
-        case 'borrowing':
-            return 'blue';
-        case 'overdue':
-            return 'red';
-        case 'returned':
-            return 'green';
-        default:
-            return 'gray';
-    }
-});
-
-const statusLabel = computed(() => {
-    if (!props.borrow) return '';
-    switch (props.borrow.status) {
-        case 'borrowing':
-            return 'Đang mượn';
-        case 'overdue':
-            return 'Quá hạn';
-        case 'returned':
-            return 'Đã trả';
-        default:
-            return props.borrow.status;
+            return 'Xác nhận mượn sách từ yêu cầu giữ';
     }
 });
 
@@ -132,115 +53,190 @@ const formatDate = (dateString: string | null | undefined) => {
 };
 
 const onSubmit = async (event: FormSubmitEvent<Schema>) => {
-    if (props.mode === 'create') {
-        await BorrowApi.borrow({
-            readerId: event.data.readerId!,
-            bookId: event.data.bookId!,
-            borrowDate: event.data.borrowDate!,
-            dueDate: event.data.dueDate!,
-            notes: event.data.notes || undefined
-        });
+    if (props.mode === 'create' && props.holdRequest) {
+        try {
+            await BorrowApi.acceptBorrowFromHoldRequest({}, {
+                holdId: props.holdRequest.id,
+                dueDate: event.data.dueDate
+            });
+            emit('close', true);
+        } catch (error) {
+            console.error('Error accepting borrow from hold request:', error);
+        }
     }
-    // Note: Edit functionality would need a specific API endpoint for updating borrow records
-    // For now, we'll just emit the close event
-
-    emit('close', true);
 };
 </script>
 
 <template>
     <UModal :title :ui="{ footer: 'justify-end' }">
         <template #body>
-            <div v-if="borrow && mode === 'view'" class="space-y-4">
-                <div class="flex justify-between items-start">
-                    <h3 class="text-lg font-semibold text-gray-900">Thông tin giao dịch mượn</h3>
-                    <UBadge :color="statusBadgeColor" variant="subtle">
-                        {{ statusLabel }}
-                    </UBadge>
+            <div v-if="holdRequest && mode === 'view'" class="space-y-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Chi tiết yêu cầu giữ sách</h3>
                 </div>
 
-                <div class="grid grid-cols-1 gap-4 text-sm">
-                    <div class="border-b pb-3">
-                        <span class="font-medium text-gray-600">Độc giả:</span>
-                        <p class="text-gray-900 mt-1">
-                            {{ typeof borrow.reader === 'string' ? borrow.reader : `${borrow.reader.lastName}
-                            ${borrow.reader.firstName}` }}
-                            <span v-if="typeof borrow.reader !== 'string'" class="text-gray-500 text-xs ml-1">
-                                ({{ borrow.reader.readerCode }})
-                            </span>
-                        </p>
-                    </div>
+                <!-- Two Column Layout -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left Column - Reader Information -->
+                    <UCard>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <UIcon name="i-heroicons-user" class="w-5 h-5 text-primary" />
+                                <h4 class="font-semibold">Thông tin độc giả</h4>
+                            </div>
+                        </template>
 
-                    <div class="border-b pb-3">
-                        <span class="font-medium text-gray-600">Sách:</span>
-                        <p class="text-gray-900 mt-1">
-                            {{ typeof borrow.book === 'string' ? borrow.book : borrow.book.title }}
-                        </p>
-                        <p v-if="typeof borrow.book !== 'string'" class="text-gray-500 text-xs mt-1">
-                            ISBN: {{ borrow.book.isbn }}
-                        </p>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <span class="font-medium text-gray-600">Ngày mượn:</span>
-                            <p class="text-gray-900 mt-1">{{ formatDate(borrow.borrowDate) }}</p>
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-600">Mã độc giả:</span>
+                                <p class="text-gray-900 mt-1">{{ holdRequest.reader.code }}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600">Tên độc giả:</span>
+                                <p class="text-gray-900 mt-1">
+                                    {{ holdRequest.reader.lastName }} {{ holdRequest.reader.firstName }}
+                                </p>
+                            </div>
                         </div>
-                        <div>
-                            <span class="font-medium text-gray-600">Ngày trả dự kiến:</span>
-                            <p class="text-gray-900 mt-1">{{ formatDate(borrow.dueDate) }}</p>
+                    </UCard>
+
+                    <UCard>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <UIcon name="i-heroicons-book-open" class="w-5 h-5 text-primary" />
+                                <h4 class="font-semibold">Thông tin sách</h4>
+                            </div>
+                        </template>
+
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-600">Tên sách:</span>
+                                <p class="text-gray-900 mt-1">{{ holdRequest.book.title }}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600">Tác giả:</span>
+                                <p class="text-gray-900 mt-1">{{ holdRequest.book.author }}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600">ISBN:</span>
+                                <p class="text-gray-900 mt-1">{{ holdRequest.book.ISBN }}</p>
+                            </div>
+                            <!-- <div>
+                                <span class="font-medium text-gray-600">Nhà xuất bản:</span>
+                                <p class="text-gray-900 mt-1">
+                                    {{ publishers.find(pub => pub.id === holdRequest.book.publisher).name }}
+                                </p>
+                            </div> -->
                         </div>
-                    </div>
-
-                    <div v-if="borrow.returnDate">
-                        <span class="font-medium text-gray-600">Ngày trả thực tế:</span>
-                        <p class="text-gray-900 mt-1">{{ formatDate(borrow.returnDate) }}</p>
-                    </div>
-
-                    <div v-if="borrow.staff">
-                        <span class="font-medium text-gray-600">Nhân viên xử lý:</span>
-                        <p class="text-gray-900 mt-1">
-                            {{ typeof borrow.staff === 'string' ? borrow.staff : `${borrow.staff.lastName}
-                            ${borrow.staff.firstName}` }}
-                        </p>
-                    </div>
-
-                    <div v-if="borrow.notes">
-                        <span class="font-medium text-gray-600">Ghi chú:</span>
-                        <p class="text-gray-900 mt-1">{{ borrow.notes }}</p>
-                    </div>
+                    </UCard>
                 </div>
+
+                <!-- Hold Request Details -->
+                <UCard>
+                    <template #header>
+                        <div class="flex items-center gap-2">
+                            <UIcon name="i-heroicons-clock" class="w-5 h-5 text-primary" />
+                            <h4 class="font-semibold">Chi tiết yêu cầu</h4>
+                        </div>
+                    </template>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div>
+                            <span class="font-medium text-gray-600">Ngày tạo yêu cầu:</span>
+                            <p class="text-gray-900 mt-1">{{ formatDate(holdRequest.holdDate) }}</p>
+                        </div>
+                        <div>
+                            <span class="font-medium text-gray-600">Ngày hết hạn:</span>
+                            <p class="text-gray-900 mt-1">{{ formatDate(holdRequest.expiryDate) }}</p>
+                        </div>
+                    </div>
+                </UCard>
             </div>
 
-            <UForm v-else ref="form" :schema :state class="space-y-4" @submit="onSubmit">
-                <UFormField label="Độc giả" required name="readerId">
-                    <USelect v-model="state.readerId" :options="readerOptions" placeholder="Chọn độc giả" searchable
-                        class="w-full" />
-                </UFormField>
-
-                <UFormField label="Sách" required name="bookId">
-                    <USelect v-model="state.bookId" :options="bookOptions" placeholder="Chọn sách" searchable
-                        class="w-full" />
-                </UFormField>
-
-                <div class="grid grid-cols-2 gap-4">
-                    <UFormField label="Ngày mượn" required name="borrowDate">
-                        <UInput v-model="state.borrowDate" type="date" class="w-full" />
-                    </UFormField>
-
-                    <UFormField label="Ngày trả dự kiến" required name="dueDate">
-                        <UInput v-model="state.dueDate" type="date" class="w-full" />
-                    </UFormField>
+            <!-- Create Mode Form -->
+            <div v-else-if="holdRequest && mode === 'create'" class="space-y-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Xác nhận mượn sách</h3>
                 </div>
 
-                <UFormField v-if="mode === 'edit'" label="Ngày trả thực tế" name="returnDate">
-                    <UInput v-model="state.returnDate" type="date" class="w-full" />
-                </UFormField>
+                <!-- Two Column Layout -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left Column - Reader Information -->
+                    <UCard>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <UIcon name="i-heroicons-user" class="w-5 h-5 text-primary" />
+                                <h4 class="font-semibold">Thông tin độc giả</h4>
+                            </div>
+                        </template>
 
-                <UFormField label="Ghi chú" name="notes">
-                    <UTextarea v-model="state.notes" placeholder="Nhập ghi chú (tùy chọn)" class="w-full" />
-                </UFormField>
-            </UForm>
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-600">Mã độc giả:</span>
+                                <p class="text-gray-900 mt-1">{{ holdRequest.reader.code }}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600">Tên độc giả:</span>
+                                <p class="text-gray-900 mt-1">
+                                    {{ holdRequest.reader.lastName }} {{ holdRequest.reader.firstName }}
+                                </p>
+                            </div>
+                        </div>
+                    </UCard>
+
+                    <!-- Right Column - Book Information -->
+                    <UCard>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <UIcon name="i-heroicons-book-open" class="w-5 h-5 text-primary" />
+                                <h4 class="font-semibold">Thông tin sách</h4>
+                            </div>
+                        </template>
+
+                        <div class="space-y-3 text-sm">
+                            <div>
+                                <span class="font-medium text-gray-600">Tên sách:</span>
+                                <p class="text-gray-900 mt-1">{{ holdRequest.book.title }}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600">Tác giả:</span>
+                                <p class="text-gray-900 mt-1">{{ holdRequest.book.author }}</p>
+                            </div>
+                            <div>
+                                <span class="font-medium text-gray-600">ISBN:</span>
+                                <p class="text-gray-900 mt-1">{{ holdRequest.book.ISBN }}</p>
+                            </div>
+                        </div>
+                    </UCard>
+                </div>
+
+                <!-- Form for Due Date -->
+                <UForm ref="form" :schema :state class="space-y-4" @submit="onSubmit">
+                    <UCard>
+                        <template #header>
+                            <div class="flex items-center gap-2">
+                                <UIcon name="i-heroicons-calendar" class="w-5 h-5 text-primary" />
+                                <h4 class="font-semibold">Thiết lập mượn sách</h4>
+                            </div>
+                        </template>
+
+                        <div class="space-y-4">
+                            <UFormField label="Ngày trả dự kiến" required name="dueDate">
+                                <UInput v-model="state.dueDate" type="date" class="w-full"
+                                    :min="new Date().toISOString().split('T')[0]"
+                                    :max="addDays(new Date(), 30).toISOString().split('T')[0]" />
+                            </UFormField>
+                        </div>
+                    </UCard>
+                </UForm>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="text-center py-8">
+                <UIcon name="i-heroicons-exclamation-triangle" class="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Không có dữ liệu</h3>
+                <p class="text-gray-500">Không tìm thấy thông tin yêu cầu giữ sách.</p>
+            </div>
         </template>
 
         <template #footer="{ close }">
@@ -248,8 +244,8 @@ const onSubmit = async (event: FormSubmitEvent<Schema>) => {
                 {{ mode === 'view' ? 'Đóng' : 'Hủy' }}
             </UButton>
 
-            <UButton v-if="props.mode !== 'view'" type="submit" color="primary" loading-auto @click="form?.submit()">
-                {{ mode === 'create' ? 'Tạo giao dịch' : 'Cập nhật' }}
+            <UButton v-if="mode === 'create'" type="submit" color="primary" loading-auto @click="form?.submit()">
+                Xác nhận mượn sách
             </UButton>
         </template>
     </UModal>

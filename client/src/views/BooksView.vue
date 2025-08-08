@@ -85,7 +85,7 @@ const filteredBooks = computed(() => {
     // Apply selected genres filter
     if (selectedGenres.value.length > 0) {
         result = result.filter(book =>
-            book.genre && book.genre.some(genre => selectedGenres.value.includes(genre))
+            book.genre && selectedGenres.value.every(genre => book.genre!.includes(genre))
         );
     }
 

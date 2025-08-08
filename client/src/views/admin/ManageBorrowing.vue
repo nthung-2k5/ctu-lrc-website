@@ -11,9 +11,6 @@ import UTooltip from '@nuxt/ui/components/Tooltip.vue';
 const holdRequests = ref<HoldRequest[]>([]);
 const borrowingRecords = ref<Borrow[]>([]);
 const selectedStatus = ref('all');
-const showBorrowModal = ref(false);
-const selectedBorrow = ref<Borrow | undefined>(undefined);
-const borrowModalMode = ref<'view' | 'create' | 'edit'>('view');
 
 const tabs = [
     {
@@ -29,21 +26,29 @@ const tabs = [
 ];
 
 const loadData = async () => {
-    holdRequests.value = (await BorrowApi.listHoldRequests()).data;
-    borrowingRecords.value = (await BorrowApi.list()).data;
+    holdRequests.value = (await BorrowApi.listHoldRequests()).data.reverse();
+    borrowingRecords.value = (await BorrowApi.list()).data.reverse();
 };
 
-const onBorrowModalClose = (shouldRefresh?: boolean) => {
-    showBorrowModal.value = false;
-    selectedBorrow.value = undefined;
-    if (shouldRefresh) {
-        loadData();
-    }
+const overlay = useOverlay();
+const borrowModal = overlay.create(BorrowModal);
+
+const acceptHoldRequest = async (holdRequest: HoldRequest) => {
+    // await BorrowApi.acceptBorrowFromHoldRequest({}, { holdId });
+    // loadData();
+    borrowModal.open({
+        mode: 'create',
+        holdRequest,
+        onClose: (shouldRefresh) => { if (shouldRefresh) loadData(); }
+    });
 };
 
-const acceptHoldRequest = async (holdId: string) => {
-    await BorrowApi.acceptBorrowFromHoldRequest({}, { holdId });
-    loadData();
+const viewHoldRequest = (holdRequest: HoldRequest) => {
+    borrowModal.open({
+        mode: 'view',
+        holdRequest,
+        onClose: () => { }
+    });
 };
 
 const returnBook = async (borrowId: string) => {
@@ -67,10 +72,10 @@ const holdRequestsColumns: TableColumn<HoldRequest>[] = [
         header: 'Hành động',
         cell: ({ row }) => (<div class={'flex gap-2'}>
             <UTooltip text="Chấp nhận yêu cầu mượn sách">
-                <UButton icon="i-heroicons-check" color="success" variant='ghost' loadingAuto onClick={() => acceptHoldRequest(row.original.id)} />
+                <UButton icon="i-heroicons-check" color="success" variant='ghost' onClick={() => acceptHoldRequest(row.original)} />
             </UTooltip>
             <UTooltip text="Xem chi tiết">
-                <UButton icon="i-heroicons-eye" color="neutral" variant="ghost" />
+                <UButton icon="i-heroicons-eye" color="neutral" variant="ghost" onClick={() => viewHoldRequest(row.original)} />
             </UTooltip>
         </div>)
     }
@@ -110,11 +115,7 @@ const borrowingColumns: TableColumn<Borrow>[] = [
                     <UButton icon="i-heroicons-check" color="success" variant="ghost" loadingAuto onClick={() => returnBook(row.original.id)} />
                 </UTooltip> : null]}
                 <UTooltip text="Xem chi tiết">
-                    <UButton icon="i-heroicons-eye" color="neutral" variant="ghost" onClick={() => {
-                        selectedBorrow.value = row.original;
-                        borrowModalMode.value = 'view';
-                        showBorrowModal.value = true;
-                    }} />
+                    <UButton icon="i-heroicons-eye" color="neutral" variant="ghost" />
                 </UTooltip>
             </div>
         )

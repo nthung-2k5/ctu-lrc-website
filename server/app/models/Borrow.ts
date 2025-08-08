@@ -34,11 +34,11 @@ const BorrowSchema = new Schema({
         validate: {
             validator: function (v: Date) {
                 const borrowDate = (this as any).ngayMuon as Date;
-                const maximumDue = new Date(borrowDate.getTime() + 14 * 24 * 60 * 60 * 1000);
-                maximumDue.setHours(23, 59, 59, 999); // Default to 14 days from now
+                const maximumDue = new Date(borrowDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+                maximumDue.setHours(23, 59, 59, 999); // Default to 30 days from now
                 return v >= borrowDate && v <= maximumDue;
             },
-            message: 'Hạn trả {VALUE} không hợp lệ! Hạn trả phải trong khoảng từ ngày hiện tại đến 14 ngày sau.'
+            message: 'Hạn trả {VALUE} không hợp lệ! Hạn trả phải trong khoảng từ ngày hiện tại đến 30 ngày sau.'
         },
     },
 

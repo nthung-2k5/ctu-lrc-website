@@ -15,9 +15,9 @@ const getHoldRequests = async (_req: PostRequest, res: Response) => {
 
 const acceptHoldRequest = async (req: PostRequest<{ holdId: string, dueDate?: Date }>, res: Response) => {
     const staffId = req.user!.id;
-    const { holdId } = req.body;
+    const { holdId, dueDate } = req.body;
 
-    const holdRequest = await BorrowService.acceptHoldRequest(staffId, new Types.ObjectId(holdId));
+    const holdRequest = await BorrowService.acceptHoldRequest(staffId, new Types.ObjectId(holdId), dueDate);
     res.status(200).json(holdRequest);
 };
 
